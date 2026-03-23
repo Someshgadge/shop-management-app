@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to get user role
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    function isAdmin() {
+      return getUserRole() == 'admin';
+    }
+    
+    function isManager() {
+      return getUserRole() == 'manager';
+    }
+    
+    function isShopkeeper() {
+      return getUserRole() == 'shopkeeper';
+    }
+    
+    function getShopId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shop_id;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && isAdmin();
+      allow update: if request.auth != null && (isAdmin() || request.auth.uid == userId);
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // Shops collection
+    match /shops/{shopId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && (isAdmin() || isManager());
+      allow update: if request.auth != null && (isAdmin() || isManager());
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // Sales collection
+    match /sales/{saleId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (isAdmin() || isManager());
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // Purchases collection
+    match /purchases/{purchaseId} {
+      allow read: if request.auth != null && (isAdmin() || isManager());
+      allow create: if request.auth != null && (isAdmin() || isManager());
+      allow update: if request.auth != null && (isAdmin() || isManager());
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // Distributions collection
+    match /distributions/{distId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && (isAdmin() || isManager());
+      // Shopkeepers can update to accept/reject, managers can update their distributions
+      allow update: if request.auth != null && 
+                       (isAdmin() || 
+                        (isManager()) || 
+                        (isShopkeeper() && resource.data.shop_id == getShopId()));
+    }
+    
+    // Notifications collection
+    match /notifications/{notifId} {
+      allow read: if request.auth != null && 
+                     (resource.data.recipient_id == request.auth.uid ||
+                      isAdmin());
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && 
+                       resource.data.recipient_id == request.auth.uid;
+    }
+  }
+}
