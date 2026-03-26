@@ -10,6 +10,7 @@ import 'distribution/distribution_screen.dart';
 import 'users/user_management_screen.dart';
 import 'shops/shop_management_screen.dart';
 import 'notifications_screen.dart';
+import 'shopkeeper/shopkeeper_home_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -32,6 +33,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Consumer2<AuthProvider, NotificationProvider>(
       builder: (context, authProvider, notificationProvider, _) {
+        // Redirect shopkeepers to simplified home screen
+        if (authProvider.isShopkeeper) {
+          return const ShopkeeperHomeScreen();
+        }
+
         return Scaffold(
           key: _scaffoldKey,
           appBar: AppBar(
@@ -125,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       // Logo at the top
                       Center(
                         child: Image.asset(
-                          'images/logo.png',
+                          'assets/images/logo.png',
                           height: 60,
                           width: 60,
                           fit: BoxFit.contain,

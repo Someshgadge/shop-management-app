@@ -81,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Image.asset(
-                        'images/logo.png',
+                        'assets/images/logo.png',
                         height: 80,
                         width: 80,
                         fit: BoxFit.contain,

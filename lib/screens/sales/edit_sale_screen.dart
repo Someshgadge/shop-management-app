@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../../providers/auth_provider.dart';
 import '../../services/database_service.dart';
-import '../../models/models.dart';
+import '../../models/sale.dart';
 
 class EditSaleScreen extends StatefulWidget {
   final Sale sale;
@@ -16,17 +14,21 @@ class EditSaleScreen extends StatefulWidget {
 
 class _EditSaleScreenState extends State<EditSaleScreen> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _storeNameController;
   late TextEditingController _onlineAmountController;
   late TextEditingController _cashAmountController;
   late TextEditingController _notesController;
   late DateTime _selectedDate;
+  late String _selectedStoreName;
   bool _isLoading = false;
+  List<String> _storeNames = [];
+  bool _isLoadingStores = true;
+  bool _isAddingNewStore = false;
+  final _newStoreController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _storeNameController = TextEditingController(text: widget.sale.storeName);
+    _selectedStoreName = widget.sale.storeName;
     _onlineAmountController = TextEditingController(
       text: widget.sale.onlineAmount.toString(),
     );
@@ -35,14 +37,30 @@ class _EditSaleScreenState extends State<EditSaleScreen> {
     );
     _notesController = TextEditingController(text: widget.sale.notes ?? '');
     _selectedDate = widget.sale.date;
+    _loadStoreNames();
+  }
+
+  Future<void> _loadStoreNames() async {
+    try {
+      final sales = await DatabaseService().getAllSales().first;
+      final uniqueStores = sales.map((s) => s.storeName).toSet().toList();
+      setState(() {
+        _storeNames = uniqueStores..sort();
+        _isLoadingStores = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingStores = false;
+      });
+    }
   }
 
   @override
   void dispose() {
-    _storeNameController.dispose();
     _onlineAmountController.dispose();
     _cashAmountController.dispose();
     _notesController.dispose();
+    _newStoreController.dispose();
     super.dispose();
   }
 
@@ -65,7 +83,7 @@ class _EditSaleScreenState extends State<EditSaleScreen> {
 
     try {
       await DatabaseService().updateSale(widget.sale.id, {
-        'storename': _storeNameController.text.trim(),
+        'storename': _selectedStoreName,
         'date': _selectedDate.toIso8601String(),
         'onlineamount': double.parse(_onlineAmountController.text),
         'cashamount': double.parse(_cashAmountController.text),
@@ -96,6 +114,35 @@ class _EditSaleScreenState extends State<EditSaleScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Sale'),
+        actions: [
+          if (_isAddingNewStore)
+            IconButton(
+              icon: const Icon(Icons.check),
+              onPressed: () {
+                if (_newStoreController.text.trim().isNotEmpty) {
+                  setState(() {
+                    _selectedStoreName = _newStoreController.text.trim();
+                    if (!_storeNames.contains(_selectedStoreName)) {
+                      _storeNames.add(_selectedStoreName!);
+                      _storeNames.sort();
+                    }
+                    _isAddingNewStore = false;
+                  });
+                }
+              },
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.add_business),
+              tooltip: 'Add New Store',
+              onPressed: () {
+                setState(() {
+                  _isAddingNewStore = true;
+                  _selectedStoreName = '';
+                });
+              },
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -104,21 +151,57 @@ class _EditSaleScreenState extends State<EditSaleScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Store Name
-              TextFormField(
-                controller: _storeNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Store Name',
-                  prefixIcon: Icon(Icons.store),
+              // Store Name Dropdown or Text Field
+              if (_isAddingNewStore) ...[
+                TextFormField(
+                  controller: _newStoreController,
+                  autofocus: true,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF1A1A1A),
+                    fontWeight: FontWeight.w500,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'New Store Name',
+                    labelStyle: TextStyle(color: Colors.grey),
+                    prefixIcon: Icon(Icons.add_business),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide(color: Colors.grey),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide:
+                          BorderSide(color: Color(0xFF667EEA), width: 2),
+                    ),
+                    helperText: 'Enter new store name',
+                  ),
+                  textInputAction: TextInputAction.next,
+                  onFieldSubmitted: (_) {
+                    if (_newStoreController.text.trim().isNotEmpty) {
+                      setState(() {
+                        _selectedStoreName = _newStoreController.text.trim();
+                        if (!_storeNames.contains(_selectedStoreName)) {
+                          _storeNames.add(_selectedStoreName!);
+                          _storeNames.sort();
+                        }
+                        _isAddingNewStore = false;
+                      });
+                    }
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter store name';
+                    }
+                    return null;
+                  },
                 ),
-                textInputAction: TextInputAction.next,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter store name';
-                  }
-                  return null;
-                },
-              ),
+              ] else ...[
+                _buildStoreDropdown(),
+              ],
               const SizedBox(height: 16),
 
               // Date
@@ -148,10 +231,27 @@ class _EditSaleScreenState extends State<EditSaleScreen> {
                 controller: _onlineAmountController,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF1A1A1A),
+                  fontWeight: FontWeight.w500,
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Online Amount',
+                  labelStyle: TextStyle(color: Colors.grey),
                   prefixIcon: Icon(Icons.payment),
                   suffixText: '₹',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                    borderSide: BorderSide(color: Colors.grey),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                    borderSide: BorderSide(color: Color(0xFF667EEA), width: 2),
+                  ),
                 ),
                 textInputAction: TextInputAction.next,
                 validator: (value) {
@@ -171,10 +271,27 @@ class _EditSaleScreenState extends State<EditSaleScreen> {
                 controller: _cashAmountController,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF1A1A1A),
+                  fontWeight: FontWeight.w500,
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Cash Amount',
+                  labelStyle: TextStyle(color: Colors.grey),
                   prefixIcon: Icon(Icons.money),
                   suffixText: '₹',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                    borderSide: BorderSide(color: Colors.grey),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                    borderSide: BorderSide(color: Color(0xFF667EEA), width: 2),
+                  ),
                 ),
                 textInputAction: TextInputAction.next,
                 validator: (value) {
@@ -192,9 +309,26 @@ class _EditSaleScreenState extends State<EditSaleScreen> {
               // Notes
               TextFormField(
                 controller: _notesController,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF1A1A1A),
+                  fontWeight: FontWeight.w500,
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Notes',
+                  labelStyle: TextStyle(color: Colors.grey),
                   prefixIcon: Icon(Icons.note),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                    borderSide: BorderSide(color: Colors.grey),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                    borderSide: BorderSide(color: Color(0xFF667EEA), width: 2),
+                  ),
                 ),
                 maxLines: 3,
                 textInputAction: TextInputAction.done,
@@ -205,16 +339,90 @@ class _EditSaleScreenState extends State<EditSaleScreen> {
               ElevatedButton(
                 onPressed: _isLoading ? null : _updateSale,
                 style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF667EEA),
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: _isLoading
-                    ? const CircularProgressIndicator()
+                    ? const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      )
                     : const Text(
                         'Update Sale',
-                        style: TextStyle(fontSize: 16),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStoreDropdown() {
+    if (_isLoadingStores) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    // Ensure current sale's store is in the list
+    if (!_storeNames.contains(_selectedStoreName)) {
+      _storeNames.add(_selectedStoreName);
+      _storeNames.sort();
+    }
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade300),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: _storeNames.contains(_selectedStoreName)
+                ? _selectedStoreName
+                : null,
+            hint: const Text('Select Store'),
+            isExpanded: true,
+            icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF667EEA)),
+            items: _storeNames.map((store) {
+              return DropdownMenuItem(
+                value: store,
+                child: Row(
+                  children: [
+                    const Icon(Icons.store, size: 18, color: Color(0xFF667EEA)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        store,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF1A1A1A),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+            onChanged: (value) {
+              setState(() {
+                _selectedStoreName = value!;
+              });
+            },
           ),
         ),
       ),
