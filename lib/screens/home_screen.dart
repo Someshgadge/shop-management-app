@@ -4,11 +4,12 @@ import '../../providers/auth_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../models/user_role.dart';
 import 'dashboard_screen.dart';
-import 'sales/sales_screen.dart';
+import 'sales/shop_sales_screen.dart';
 import 'purchase/purchase_screen.dart';
 import 'distribution/distribution_screen.dart';
 import 'users/user_management_screen.dart';
 import 'shops/shop_management_screen.dart';
+import 'reports/reports_home_screen.dart';
 import 'notifications_screen.dart';
 import 'shopkeeper/shopkeeper_home_screen.dart';
 
@@ -46,6 +47,17 @@ class _HomeScreenState extends State<HomeScreen> {
             backgroundColor: Colors.white,
             foregroundColor: Colors.black87,
             actions: [
+              // Reports icon (Admin/Manager only)
+              if (authProvider.isManager || authProvider.isAdmin)
+                IconButton(
+                  icon: const Icon(Icons.assessment),
+                  onPressed: () {
+                    setState(() {
+                      _selectedIndex = 6;
+                    });
+                  },
+                  tooltip: 'Reports',
+                ),
               // Notification bell
               Stack(
                 children: [
@@ -169,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 _buildDrawerItem(Icons.dashboard, 'Dashboard', 0),
-                _buildDrawerItem(Icons.point_of_sale, 'Sales', 1),
+                _buildDrawerItem(Icons.store, 'Shop', 1),
                 if (authProvider.isManager || authProvider.isAdmin)
                   _buildDrawerItem(Icons.shopping_cart, 'Purchase', 2),
                 if (authProvider.isManager || authProvider.isAdmin)
@@ -178,6 +190,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   _buildDrawerItem(Icons.people, 'User Management', 4),
                 if (authProvider.isAdmin)
                   _buildDrawerItem(Icons.store, 'Shop Management', 5),
+                if (authProvider.isManager || authProvider.isAdmin)
+                  _buildDrawerItem(Icons.assessment, 'Reports', 6),
               ],
             ),
           ),
@@ -185,11 +199,12 @@ class _HomeScreenState extends State<HomeScreen> {
             index: _selectedIndex,
             children: [
               const DashboardScreen(),
-              const SalesScreen(),
+              const ShopSalesScreen(),
               const PurchaseScreen(),
               const DistributionScreen(),
               const UserManagementScreen(),
               const ShopManagementScreen(),
+              const ReportsHomeScreen(),
             ],
           ),
         );

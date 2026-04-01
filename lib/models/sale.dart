@@ -5,6 +5,7 @@ class Sale {
   final DateTime date; // Your schema: date
   final double onlineAmount; // Your schema: onlineamount
   final double cashAmount; // Your schema: cashamount
+  final double adhocExp; // Adhoc expenses (milk, sugar, etc.)
   final String? notes; // Your schema: notes
 
   Sale({
@@ -13,10 +14,12 @@ class Sale {
     required this.date,
     required this.onlineAmount,
     required this.cashAmount,
+    this.adhocExp = 0.0,
     this.notes,
   });
 
   double get totalAmount => onlineAmount + cashAmount;
+  double get netTotal => onlineAmount + cashAmount - adhocExp;
 
   factory Sale.fromSupabase(Map<String, dynamic> data) {
     return Sale(
@@ -26,6 +29,7 @@ class Sale {
           data['date'] != null ? DateTime.parse(data['date']) : DateTime.now(),
       onlineAmount: (data['onlineamount'] ?? 0).toDouble(),
       cashAmount: (data['cashamount'] ?? 0).toDouble(),
+      adhocExp: (data['adhocexp'] ?? 0).toDouble(),
       notes: data['notes'],
     );
   }
@@ -37,6 +41,7 @@ class Sale {
       'date': date.toIso8601String(),
       'onlineamount': onlineAmount,
       'cashamount': cashAmount,
+      'adhocexp': adhocExp,
       'notes': notes,
     };
   }
@@ -47,6 +52,7 @@ class Sale {
     DateTime? date,
     double? onlineAmount,
     double? cashAmount,
+    double? adhocExp,
     String? notes,
   }) {
     return Sale(
@@ -55,6 +61,7 @@ class Sale {
       date: date ?? this.date,
       onlineAmount: onlineAmount ?? this.onlineAmount,
       cashAmount: cashAmount ?? this.cashAmount,
+      adhocExp: adhocExp ?? this.adhocExp,
       notes: notes ?? this.notes,
     );
   }

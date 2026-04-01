@@ -279,13 +279,47 @@ class PurchaseScreen extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            if (authProvider.isAdmin &&
-                                purchase.billPhotoPath != null)
+                            if (purchase.billPhotoPath != null)
                               IconButton(
                                 icon: const Icon(Icons.visibility,
                                     color: Colors.blue),
                                 onPressed: () => _viewBillPhoto(
                                     context, purchase.billPhotoPath!),
+                              ),
+                            if (authProvider.isAdmin)
+                              PopupMenuButton<String>(
+                                onSelected: (value) {
+                                  if (value == 'edit') {
+                                    _showEditPurchaseDialog(context, purchase);
+                                  } else if (value == 'delete') {
+                                    _showDeleteConfirmation(context, purchase);
+                                  }
+                                },
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(
+                                    value: 'edit',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.edit, size: 20),
+                                        SizedBox(width: 8),
+                                        Text('Edit'),
+                                      ],
+                                    ),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.delete,
+                                            size: 20, color: Colors.red),
+                                        SizedBox(width: 8),
+                                        Text('Delete',
+                                            style:
+                                                TextStyle(color: Colors.red)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                           ],
                         ),
@@ -365,6 +399,88 @@ class PurchaseScreen extends StatelessWidget {
                             ),
                           ),
                         ],
+
+                        // Payment Status
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: purchase.pendingAmount > 0
+                                ? Colors.orange.withOpacity(0.1)
+                                : Colors.green.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: purchase.pendingAmount > 0
+                                  ? Colors.orange
+                                  : Colors.green,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        purchase.paymentMode == 'Online'
+                                            ? Icons.credit_card
+                                            : Icons.money,
+                                        size: 16,
+                                        color: Colors.grey[600],
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Mode: ${purchase.paymentMode}',
+                                        style: TextStyle(
+                                          color: Colors.grey[700],
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Text(
+                                    purchase.pendingAmount > 0
+                                        ? '₹${purchase.pendingAmount.toStringAsFixed(2)} Pending'
+                                        : 'Fully Paid',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: purchase.pendingAmount > 0
+                                          ? Colors.orange
+                                          : Colors.green,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Paid:',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  Text(
+                                    '₹${purchase.paidAmount.toStringAsFixed(2)} / ₹${purchase.amount.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
 
                         // Notes if available
                         if (purchase.notes != null &&
@@ -473,25 +589,161 @@ class PurchaseScreen extends StatelessWidget {
       builder: (context) => AddPurchaseDialog(),
     );
   }
+
+  void _showEditPurchaseDialog(BuildContext context, Purchase purchase) {
+    showDialog(
+      context: context,
+      builder: (context) => EditPurchaseDialog(purchase: purchase),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, Purchase purchase) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Purchase'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete purchase from "${purchase.vendorName}"?',
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.warning, color: Colors.red, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Amount: ₹${purchase.amount.toStringAsFixed(2)}',
+                        style: const TextStyle(fontSize: 14, color: Colors.red),
+                      ),
+                    ],
+                  ),
+                  if (purchase.pendingAmount > 0) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.info_outline,
+                            color: Colors.orange, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Pending: ₹${purchase.pendingAmount.toStringAsFixed(2)} will be cleared',
+                          style: const TextStyle(
+                              fontSize: 14, color: Colors.orange),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await DatabaseService().deletePurchase(purchase.id);
+              if (context.mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Purchase deleted successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class AddPurchaseDialog extends StatefulWidget {
+class EditPurchaseDialog extends StatefulWidget {
+  final Purchase purchase;
+
+  EditPurchaseDialog({required this.purchase});
+
   @override
-  State<AddPurchaseDialog> createState() => _AddPurchaseDialogState();
+  State<EditPurchaseDialog> createState() => _EditPurchaseDialogState();
 }
 
-class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
+class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _vendorController = TextEditingController();
-  final _amountController = TextEditingController();
+  late TextEditingController _vendorController;
+  late TextEditingController _amountController;
+  late TextEditingController _paidAmountController;
+  late TextEditingController _notesController;
+
   XFile? _billPhoto;
   bool _isLoading = false;
+  late DateTime _selectedDate;
+  late String _paymentMode;
+
+  @override
+  void initState() {
+    super.initState();
+    _vendorController = TextEditingController(text: widget.purchase.vendorName);
+    _amountController =
+        TextEditingController(text: widget.purchase.amount.toString());
+    _paidAmountController =
+        TextEditingController(text: widget.purchase.paidAmount.toString());
+    _notesController = TextEditingController(text: widget.purchase.notes ?? '');
+    _selectedDate = widget.purchase.date;
+    _paymentMode = widget.purchase.paymentMode;
+  }
 
   @override
   void dispose() {
     _vendorController.dispose();
     _amountController.dispose();
+    _paidAmountController.dispose();
+    _notesController.dispose();
     super.dispose();
+  }
+
+  double get _totalAmount {
+    return double.tryParse(_amountController.text) ?? 0;
+  }
+
+  double get _paidAmount {
+    return double.tryParse(_paidAmountController.text) ?? 0;
+  }
+
+  double get _pendingAmount {
+    return _totalAmount - _paidAmount;
+  }
+
+  Future<void> _selectDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
+    }
   }
 
   Future<void> _pickImage() async {
@@ -504,6 +756,402 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
 
   Future<void> _submitPurchase() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_paidAmount > _totalAmount) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Paid amount cannot be greater than total amount')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final databaseService = DatabaseService();
+      final storageService = StorageService();
+
+      String? billPhotoPath = widget.purchase.billPhotoPath;
+      if (_billPhoto != null) {
+        final tempId = DateTime.now().millisecondsSinceEpoch.toString();
+        billPhotoPath =
+            await storageService.uploadBillPhoto(tempId, _billPhoto!);
+      }
+
+      await databaseService.updatePurchase(widget.purchase.id, {
+        'vendorname': _vendorController.text.trim(),
+        'amount': _totalAmount,
+        'billphotopath': billPhotoPath,
+        'date': _selectedDate.toIso8601String(),
+        'category': 'Stock',
+        'paymentmode': _paymentMode,
+        'paidamount': _paidAmount,
+        'pendingamount': _pendingAmount,
+        'notes': _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
+      });
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Purchase updated successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit Purchase'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Date Field
+              InkWell(
+                onTap: _selectDate,
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Date',
+                    prefixIcon: Icon(Icons.calendar_today),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        DateFormat('dd MMM yyyy').format(_selectedDate),
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      const Icon(Icons.arrow_drop_down),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Vendor Name
+              TextFormField(
+                controller: _vendorController,
+                decoration: const InputDecoration(
+                  labelText: 'Vendor Name',
+                  prefixIcon: Icon(Icons.person),
+                  helperText: 'Tip: Type to search existing vendors',
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Required';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Total Amount
+              TextFormField(
+                controller: _amountController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Total Amount',
+                  prefixIcon: Icon(Icons.currency_rupee),
+                  suffixText: '₹',
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Required';
+                  }
+                  if (double.tryParse(value) == null) {
+                    return 'Invalid number';
+                  }
+                  return null;
+                },
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 16),
+
+              // Payment Mode
+              DropdownButtonFormField<String>(
+                value: _paymentMode,
+                decoration: const InputDecoration(
+                  labelText: 'Payment Mode',
+                  prefixIcon: Icon(Icons.payment),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'Cash', child: Text('Cash')),
+                  DropdownMenuItem(value: 'Online', child: Text('Online')),
+                ],
+                onChanged: (value) {
+                  setState(() => _paymentMode = value!);
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Paid Amount
+              TextFormField(
+                controller: _paidAmountController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Amount Paid',
+                  prefixIcon: Icon(Icons.currency_rupee),
+                  suffixText: '₹',
+                  helperText: 'Leave empty if fully paid on credit',
+                ),
+                validator: (value) {
+                  if (value != null && double.tryParse(value) == null) {
+                    return 'Invalid number';
+                  }
+                  return null;
+                },
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 16),
+
+              // Payment Status Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _pendingAmount > 0
+                      ? Colors.orange.withOpacity(0.1)
+                      : Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _pendingAmount > 0 ? Colors.orange : Colors.green,
+                    width: 2,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Total Amount:',
+                          style: TextStyle(fontSize: 14, color: Colors.black87),
+                        ),
+                        Text(
+                          '₹${_totalAmount.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Paid Amount:',
+                          style: TextStyle(fontSize: 14, color: Colors.black87),
+                        ),
+                        Text(
+                          '₹${_paidAmount.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Pending Amount:',
+                          style: TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          _pendingAmount > 0
+                              ? '₹${_pendingAmount.toStringAsFixed(2)}'
+                              : 'Fully Paid',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: _pendingAmount > 0
+                                ? Colors.orange
+                                : Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Notes (Optional)
+              TextFormField(
+                controller: _notesController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'Notes (Optional)',
+                  prefixIcon: Icon(Icons.note),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Upload Bill Photo
+              InkWell(
+                onTap: _pickImage,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.image),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _billPhoto == null
+                              ? 'Upload New Bill Photo (Optional)'
+                              : 'New photo selected: ${_billPhoto!.name}',
+                        ),
+                      ),
+                      if (_billPhoto != null)
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.red),
+                          onPressed: () {
+                            setState(() => _billPhoto = null);
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _isLoading ? null : _submitPurchase,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF667EEA),
+            foregroundColor: Colors.white,
+          ),
+          child: _isLoading
+              ? const CircularProgressIndicator()
+              : const Text('Update Purchase'),
+        ),
+      ],
+    );
+  }
+}
+
+class AddPurchaseDialog extends StatefulWidget {
+  @override
+  State<AddPurchaseDialog> createState() => _AddPurchaseDialogState();
+}
+
+class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _vendorController = TextEditingController();
+  final _amountController = TextEditingController();
+  final _paidAmountController = TextEditingController();
+  final _notesController = TextEditingController();
+
+  XFile? _billPhoto;
+  bool _isLoading = false;
+  DateTime _selectedDate = DateTime.now();
+  String _paymentMode = 'Cash';
+  List<String> _existingVendors = [];
+  bool _showVendorSuggestions = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExistingVendors();
+  }
+
+  Future<void> _loadExistingVendors() async {
+    try {
+      final purchases = await DatabaseService().getAllPurchases().first;
+      final uniqueVendors = purchases.map((p) => p.vendorName).toSet().toList();
+      setState(() {
+        _existingVendors = uniqueVendors..sort();
+      });
+    } catch (e) {
+      debugPrint('Error loading vendors: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _vendorController.dispose();
+    _amountController.dispose();
+    _paidAmountController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  double get _totalAmount {
+    return double.tryParse(_amountController.text) ?? 0;
+  }
+
+  double get _paidAmount {
+    return double.tryParse(_paidAmountController.text) ?? 0;
+  }
+
+  double get _pendingAmount {
+    return _totalAmount - _paidAmount;
+  }
+
+  Future<void> _selectDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final imagePicker = ImagePicker();
+    final picked = await imagePicker.pickImage(source: ImageSource.gallery);
+    if (picked != null) {
+      setState(() => _billPhoto = picked);
+    }
+  }
+
+  Future<void> _submitPurchase() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_paidAmount > _totalAmount) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Paid amount cannot be greater than total amount')),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -522,10 +1170,16 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
       final purchase = Purchase(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         vendorName: _vendorController.text.trim(),
-        amount: double.parse(_amountController.text),
+        amount: _totalAmount,
         billPhotoPath: billPhotoPath,
-        date: DateTime.now(),
+        date: _selectedDate,
         category: 'Stock',
+        paymentMode: _paymentMode,
+        paidAmount: _paidAmount,
+        pendingAmount: _pendingAmount,
+        notes: _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
       );
 
       await databaseService.createPurchase(purchase);
@@ -557,11 +1211,35 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Date Field
+              InkWell(
+                onTap: _selectDate,
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Date',
+                    prefixIcon: Icon(Icons.calendar_today),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        DateFormat('dd MMM yyyy').format(_selectedDate),
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      const Icon(Icons.arrow_drop_down),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Vendor Name
               TextFormField(
                 controller: _vendorController,
                 decoration: const InputDecoration(
                   labelText: 'Vendor Name',
                   prefixIcon: Icon(Icons.person),
+                  helperText: 'Tip: Type to search existing vendors',
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -571,13 +1249,16 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
                 },
               ),
               const SizedBox(height: 16),
+
+              // Total Amount
               TextFormField(
                 controller: _amountController,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
-                  labelText: 'Amount',
+                  labelText: 'Total Amount',
                   prefixIcon: Icon(Icons.currency_rupee),
+                  suffixText: '₹',
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -588,8 +1269,147 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
                   }
                   return null;
                 },
+                onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 16),
+
+              // Payment Mode
+              DropdownButtonFormField<String>(
+                value: _paymentMode,
+                decoration: const InputDecoration(
+                  labelText: 'Payment Mode',
+                  prefixIcon: Icon(Icons.payment),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'Cash', child: Text('Cash')),
+                  DropdownMenuItem(value: 'Online', child: Text('Online')),
+                ],
+                onChanged: (value) {
+                  setState(() => _paymentMode = value!);
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Paid Amount
+              TextFormField(
+                controller: _paidAmountController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Amount Paid',
+                  prefixIcon: Icon(Icons.currency_rupee),
+                  suffixText: '₹',
+                  helperText: 'Leave empty if fully paid on credit',
+                ),
+                validator: (value) {
+                  if (value != null && double.tryParse(value) == null) {
+                    return 'Invalid number';
+                  }
+                  return null;
+                },
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 16),
+
+              // Payment Status Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _pendingAmount > 0
+                      ? Colors.orange.withOpacity(0.1)
+                      : Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _pendingAmount > 0 ? Colors.orange : Colors.green,
+                    width: 2,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Total Amount:',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          '₹${_totalAmount.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Paid Amount:',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          '₹${_paidAmount.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Pending Amount:',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          _pendingAmount > 0
+                              ? '₹${_pendingAmount.toStringAsFixed(2)}'
+                              : 'Fully Paid',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: _pendingAmount > 0
+                                ? Colors.orange
+                                : Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Notes (Optional)
+              TextFormField(
+                controller: _notesController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'Notes (Optional)',
+                  prefixIcon: Icon(Icons.note),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Upload Bill Photo
               InkWell(
                 onTap: _pickImage,
                 child: Container(
@@ -602,11 +1422,20 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
                     children: [
                       const Icon(Icons.image),
                       const SizedBox(width: 8),
-                      Text(
-                        _billPhoto == null
-                            ? 'Upload Bill Photo (Optional)'
-                            : 'Photo selected',
+                      Expanded(
+                        child: Text(
+                          _billPhoto == null
+                              ? 'Upload Bill Photo (Optional)'
+                              : 'Photo selected: ${_billPhoto!.name}',
+                        ),
                       ),
+                      if (_billPhoto != null)
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.red),
+                          onPressed: () {
+                            setState(() => _billPhoto = null);
+                          },
+                        ),
                     ],
                   ),
                 ),
@@ -622,9 +1451,13 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : _submitPurchase,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF667EEA),
+            foregroundColor: Colors.white,
+          ),
           child: _isLoading
               ? const CircularProgressIndicator()
-              : const Text('Add'),
+              : const Text('Add Purchase'),
         ),
       ],
     );

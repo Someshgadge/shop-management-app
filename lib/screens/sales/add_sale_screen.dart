@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/database_service.dart';
 import '../../models/sale.dart';
+import '../../models/shop.dart';
 
 class AddSaleScreen extends StatefulWidget {
   const AddSaleScreen({super.key});
@@ -15,33 +17,43 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
   final _formKey = GlobalKey<FormState>();
   final _onlineAmountController = TextEditingController();
   final _cashAmountController = TextEditingController();
+  final _adhocExpController = TextEditingController();
   final _notesController = TextEditingController();
-  final _newStoreController = TextEditingController();
 
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
-  String? _selectedStoreName;
-  List<String> _storeNames = [];
-  bool _isLoadingStores = true;
-  bool _isAddingNewStore = false;
+  String? _selectedShopName;
+  List<Shop> _shops = [];
+  bool _isLoadingShops = true;
 
   @override
   void initState() {
     super.initState();
-    _loadStoreNames();
+    _loadShops();
   }
 
-  Future<void> _loadStoreNames() async {
+  Future<void> _loadShops() async {
     try {
-      final sales = await DatabaseService().getAllSales().first;
-      final uniqueStores = sales.map((s) => s.storeName).toSet().toList();
+      final authProvider = context.read<AuthProvider>();
+      final shops = await DatabaseService().getAllShops().first;
+
       setState(() {
-        _storeNames = uniqueStores..sort();
-        _isLoadingStores = false;
+        _shops = shops..sort((a, b) => a.shopName.compareTo(b.shopName));
+        _isLoadingShops = false;
+
+        // Auto-select shop for shopkeepers
+        if (authProvider.isShopkeeper &&
+            authProvider.currentUser?.shopId != null) {
+          final assignedShop = _shops.firstWhere(
+            (shop) => shop.id == authProvider.currentUser!.shopId,
+            orElse: () => _shops.first,
+          );
+          _selectedShopName = assignedShop.shopName;
+        }
       });
     } catch (e) {
       setState(() {
-        _isLoadingStores = false;
+        _isLoadingShops = false;
       });
     }
   }
@@ -50,9 +62,59 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
   void dispose() {
     _onlineAmountController.dispose();
     _cashAmountController.dispose();
+    _adhocExpController.dispose();
     _notesController.dispose();
-    _newStoreController.dispose();
     super.dispose();
+  }
+
+  double get _onlineAmount {
+    return double.tryParse(_onlineAmountController.text) ?? 0;
+  }
+
+  double get _cashAmount {
+    return double.tryParse(_cashAmountController.text) ?? 0;
+  }
+
+  double get _adhocExpTotal {
+    final text = _adhocExpController.text.trim();
+    if (text.isEmpty) return 0;
+
+    double total = 0;
+    // Parse format: "milk-25, sugar-30, bread-50"
+    final items = text.split(',');
+    for (var item in items) {
+      final parts = item.trim().split('-');
+      if (parts.length >= 2) {
+        final amount = double.tryParse(parts.last.trim());
+        if (amount != null) {
+          total += amount;
+        }
+      }
+    }
+    return total;
+  }
+
+  double get _netTotal {
+    return _onlineAmount + _cashAmount - _adhocExpTotal;
+  }
+
+  List<Map<String, dynamic>> get _adhocExpItems {
+    final text = _adhocExpController.text.trim();
+    if (text.isEmpty) return [];
+
+    List<Map<String, dynamic>> items = [];
+    final entries = text.split(',');
+    for (var entry in entries) {
+      final parts = entry.trim().split('-');
+      if (parts.length >= 2) {
+        final name = parts.sublist(0, parts.length - 1).join('-').trim();
+        final amount = double.tryParse(parts.last.trim());
+        if (name.isNotEmpty && amount != null) {
+          items.add({'name': name, 'amount': amount});
+        }
+      }
+    }
+    return items;
   }
 
   Future<void> _selectDate() async {
@@ -70,9 +132,9 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
   Future<void> _submitSale() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedStoreName == null || _selectedStoreName!.isEmpty) {
+    if (_selectedShopName == null || _selectedShopName!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select or enter store name')),
+        const SnackBar(content: Text('Please select a shop')),
       );
       return;
     }
@@ -82,10 +144,11 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
     try {
       final sale = Sale(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        storeName: _selectedStoreName!.trim(),
+        storeName: _selectedShopName!.trim(),
         date: _selectedDate,
-        onlineAmount: double.parse(_onlineAmountController.text),
-        cashAmount: double.parse(_cashAmountController.text),
+        onlineAmount: _onlineAmount,
+        cashAmount: _cashAmount,
+        adhocExp: _adhocExpTotal,
         notes: _notesController.text.trim().isEmpty
             ? null
             : _notesController.text.trim(),
@@ -115,35 +178,6 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Sale'),
-        actions: [
-          if (_isAddingNewStore)
-            IconButton(
-              icon: const Icon(Icons.check),
-              onPressed: () {
-                if (_newStoreController.text.trim().isNotEmpty) {
-                  setState(() {
-                    _selectedStoreName = _newStoreController.text.trim();
-                    if (!_storeNames.contains(_selectedStoreName)) {
-                      _storeNames.add(_selectedStoreName!);
-                      _storeNames.sort();
-                    }
-                    _isAddingNewStore = false;
-                  });
-                }
-              },
-            )
-          else
-            IconButton(
-              icon: const Icon(Icons.add_business),
-              tooltip: 'Add New Store',
-              onPressed: () {
-                setState(() {
-                  _isAddingNewStore = true;
-                  _selectedStoreName = null;
-                });
-              },
-            ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -152,57 +186,8 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Store Name Dropdown or Text Field
-              if (_isAddingNewStore) ...[
-                TextFormField(
-                  controller: _newStoreController,
-                  autofocus: true,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF1A1A1A),
-                    fontWeight: FontWeight.w500,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'New Store Name',
-                    labelStyle: TextStyle(color: Colors.grey),
-                    prefixIcon: Icon(Icons.add_business),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(12)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(12)),
-                      borderSide: BorderSide(color: Colors.grey),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(12)),
-                      borderSide:
-                          BorderSide(color: Color(0xFF667EEA), width: 2),
-                    ),
-                    helperText: 'Enter new store name',
-                  ),
-                  textInputAction: TextInputAction.next,
-                  onFieldSubmitted: (_) {
-                    if (_newStoreController.text.trim().isNotEmpty) {
-                      setState(() {
-                        _selectedStoreName = _newStoreController.text.trim();
-                        if (!_storeNames.contains(_selectedStoreName)) {
-                          _storeNames.add(_selectedStoreName!);
-                          _storeNames.sort();
-                        }
-                        _isAddingNewStore = false;
-                      });
-                    }
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter store name';
-                    }
-                    return null;
-                  },
-                ),
-              ] else ...[
-                _buildStoreDropdown(),
-              ],
+              // Shop Name Dropdown
+              _buildShopDropdown(),
               const SizedBox(height: 16),
 
               // Date
@@ -264,6 +249,7 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                   }
                   return null;
                 },
+                onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 16),
 
@@ -304,6 +290,160 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                   }
                   return null;
                 },
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 16),
+
+              // Adhoc Expenses (Multi-item format)
+              TextFormField(
+                controller: _adhocExpController,
+                keyboardType: TextInputType.text,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF1A1A1A),
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Adhoc Exp (item-amount, item-amount)',
+                  labelStyle: TextStyle(color: Colors.grey),
+                  prefixIcon: Icon(Icons.shopping_cart),
+                  hintText: 'milk-25, sugar-30, bread-50',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                    borderSide: BorderSide(color: Colors.grey),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                    borderSide: BorderSide(color: Color(0xFF667EEA), width: 2),
+                  ),
+                  helperText:
+                      'Format: item-amount, item-amount (Total will be deducted)',
+                ),
+                textInputAction: TextInputAction.next,
+                onChanged: (_) => setState(() {}),
+              ),
+
+              // Show parsed adhoc items
+              if (_adhocExpItems.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Expense Breakdown:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ..._adhocExpItems
+                          .map((item) => Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '• ${item['name']}',
+                                      style:
+                                          const TextStyle(color: Colors.orange),
+                                    ),
+                                    Text(
+                                      '₹${item['amount']}',
+                                      style: const TextStyle(
+                                        color: Colors.orange,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ))
+                          .toList(),
+                      const Divider(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Total Expenses:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orange,
+                            ),
+                          ),
+                          Text(
+                            '₹${_adhocExpTotal.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orange,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+
+              // Amount Deposited (NET TOTAL) - Read-only field
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _netTotal >= 0
+                      ? Colors.green.withOpacity(0.1)
+                      : Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _netTotal >= 0 ? Colors.green : Colors.red,
+                    width: 2,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.account_balance_wallet,
+                          color: _netTotal >= 0 ? Colors.green : Colors.red,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Amount Deposited',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      '₹${_netTotal.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: _netTotal >= 0
+                            ? Colors.green[700]
+                            : Colors.red[700],
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
 
@@ -366,8 +506,8 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
     );
   }
 
-  Widget _buildStoreDropdown() {
-    if (_isLoadingStores) {
+  Widget _buildShopDropdown() {
+    if (_isLoadingShops) {
       return const Card(
         child: Padding(
           padding: EdgeInsets.all(16),
@@ -375,6 +515,30 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
         ),
       );
     }
+
+    if (_shops.isEmpty) {
+      return Card(
+        color: Colors.amber.withOpacity(0.1),
+        child: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.amber),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'No shops found. Please add shops from Shop Management first.',
+                  style: TextStyle(color: Colors.amber),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final authProvider = context.watch<AuthProvider>();
+    final isShopkeeper = authProvider.isShopkeeper;
 
     return Card(
       elevation: 0,
@@ -386,20 +550,20 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: DropdownButtonHideUnderline(
           child: DropdownButton<String>(
-            value: _selectedStoreName,
-            hint: const Text('Select Store'),
+            value: _selectedShopName,
+            hint: Text(isShopkeeper ? 'Your assigned shop' : 'Select Shop'),
             isExpanded: true,
             icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF667EEA)),
-            items: _storeNames.map((store) {
+            items: _shops.map((shop) {
               return DropdownMenuItem(
-                value: store,
+                value: shop.shopName,
                 child: Row(
                   children: [
                     const Icon(Icons.store, size: 18, color: Color(0xFF667EEA)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        store,
+                        shop.shopName,
                         style: const TextStyle(
                           fontSize: 16,
                           color: Color(0xFF1A1A1A),
@@ -407,15 +571,35 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                         ),
                       ),
                     ),
+                    if (isShopkeeper &&
+                        authProvider.currentUser?.shopId == shop.id)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'Yours',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               );
             }).toList(),
-            onChanged: (value) {
-              setState(() {
-                _selectedStoreName = value;
-              });
-            },
+            onChanged: isShopkeeper
+                ? null // Shopkeepers cannot change shop
+                : (value) {
+                    setState(() {
+                      _selectedShopName = value;
+                    });
+                  },
           ),
         ),
       ),

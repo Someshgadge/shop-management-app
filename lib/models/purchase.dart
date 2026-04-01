@@ -7,6 +7,9 @@ class Purchase {
   final DateTime date; // Your schema: date
   final String? category; // Your schema: category
   final String? notes; // Your schema: notes
+  final String paymentMode; // 'Cash' or 'Online'
+  final double paidAmount; // Amount already paid
+  final double pendingAmount; // Amount remaining to pay
 
   Purchase({
     required this.id,
@@ -16,21 +19,32 @@ class Purchase {
     required this.date,
     this.category,
     this.notes,
+    this.paymentMode = 'Cash',
+    this.paidAmount = 0.0,
+    this.pendingAmount = 0.0,
   });
 
   // For backwards compatibility
   String? get billPhotoUrl => billPhotoPath;
+  bool get isFullyPaid => pendingAmount <= 0;
 
   factory Purchase.fromSupabase(Map<String, dynamic> data) {
+    final amount = (data['amount'] ?? 0).toDouble();
+    final paidAmount = (data['paidamount'] ?? 0).toDouble();
+    final pendingAmount = (data['pendingamount'] ?? 0).toDouble();
+
     return Purchase(
       id: data['id'] ?? '',
       vendorName: data['vendorname'] ?? '',
-      amount: (data['amount'] ?? 0).toDouble(),
+      amount: amount,
       billPhotoPath: data['billphotopath'],
       date:
           data['date'] != null ? DateTime.parse(data['date']) : DateTime.now(),
       category: data['category'],
       notes: data['notes'],
+      paymentMode: data['paymentmode'] ?? 'Cash',
+      paidAmount: paidAmount,
+      pendingAmount: pendingAmount > 0 ? pendingAmount : (amount - paidAmount),
     );
   }
 
@@ -43,6 +57,10 @@ class Purchase {
       'date': date.toIso8601String(),
       'category': category,
       'notes': notes,
+      'paymentmode': paymentMode,
+      'paidamount': paidAmount,
+      'pendingamount':
+          pendingAmount > 0 ? pendingAmount : (amount - paidAmount),
     };
   }
 
@@ -54,6 +72,9 @@ class Purchase {
     DateTime? date,
     String? category,
     String? notes,
+    String? paymentMode,
+    double? paidAmount,
+    double? pendingAmount,
   }) {
     return Purchase(
       id: id ?? this.id,
@@ -63,6 +84,9 @@ class Purchase {
       date: date ?? this.date,
       category: category ?? this.category,
       notes: notes ?? this.notes,
+      paymentMode: paymentMode ?? this.paymentMode,
+      paidAmount: paidAmount ?? this.paidAmount,
+      pendingAmount: pendingAmount ?? this.pendingAmount,
     );
   }
 }
