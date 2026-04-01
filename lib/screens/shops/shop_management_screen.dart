@@ -15,8 +15,13 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
   final DatabaseService _databaseService = DatabaseService();
   List<AppUser> _users = [];
 
+  // Force refresh by recreating streams
+  Stream<List<Shop>> get _shopsStream => _databaseService.getAllShops();
+  Stream<List<AppUser>> get _usersStream => _databaseService.getAllUsers();
+
   void _refreshData() {
     setState(() {
+      // Trigger rebuild - streams will emit new data
       _loadUsers();
     });
   }
@@ -63,7 +68,8 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
             ],
           ),
           body: StreamBuilder<List<Shop>>(
-            stream: _databaseService.getAllShops(),
+            key: ValueKey(DateTime.now().millisecondsSinceEpoch ~/ 1000),
+            stream: _shopsStream,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());

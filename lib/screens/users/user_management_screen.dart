@@ -13,8 +13,13 @@ class UserManagementScreen extends StatefulWidget {
 }
 
 class _UserManagementScreenState extends State<UserManagementScreen> {
+  // Force refresh by recreating the stream
+  Stream<List<AppUser>> get _usersStream => DatabaseService().getAllUsers();
+
   void _refreshData() {
-    setState(() {});
+    setState(() {
+      // Trigger rebuild - stream will emit new data
+    });
   }
 
   @override
@@ -41,8 +46,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           ),
         ],
       ),
-      body: FutureBuilder<List<AppUser>>(
-        future: AuthService().getAllUsers(),
+      body: StreamBuilder<List<AppUser>>(
+        key: ValueKey(DateTime.now().millisecondsSinceEpoch ~/
+            1000), // Force rebuild on refresh
+        stream: _usersStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -384,16 +391,27 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              await DatabaseService().deleteUser(user.id);
-              if (context.mounted) {
-                Navigator.pop(context);
-                _refreshData();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('User deleted successfully'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+              try {
+                await DatabaseService().deleteUser(user.id);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  _refreshData();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('User deleted successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error deleting user: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               }
             },
             style: ElevatedButton.styleFrom(
@@ -432,7 +450,7 @@ class _AddUserDialogState extends State<AddUserDialog> {
     super.dispose();
   }
 
-  Future<void> _submitUser() async {
+  void _submitUser() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
@@ -447,21 +465,44 @@ class _AddUserDialogState extends State<AddUserDialog> {
         role: _selectedRole,
       );
 
+      // Only close dialog and show success if no error occurred
       if (mounted) {
-        Navigator.pop(context);
-        widget.onUserAdded?.call();
+        Navigator.pop(context); // Close dialog
+        widget.onUserAdded?.call(); // Refresh list
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User created successfully')),
+          const SnackBar(
+            content: Text('User created successfully'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
+      String errorMessage = 'Failed to create user';
+
+      // Handle duplicate username error
+      if (e.toString().contains('duplicate key') ||
+          e.toString().contains('users_username_key')) {
+        errorMessage =
+            'Username already exists. Please choose a different username.';
+      } else if (e.toString().contains('PostgrestException')) {
+        errorMessage = 'Database error. Please try again.';
+      }
+
+      // Keep dialog open and show error
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
         );
+        // Don't close the dialog - let user fix the error
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

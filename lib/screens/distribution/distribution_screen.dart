@@ -41,6 +41,7 @@ class _DistributionScreenState extends State<DistributionScreen> {
         ],
       ),
       body: StreamBuilder<List<Distribution>>(
+          key: ValueKey(DateTime.now().millisecondsSinceEpoch ~/ 1000),
           stream: databaseService.getAllDistributions(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {

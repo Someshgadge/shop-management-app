@@ -433,11 +433,12 @@ class DatabaseService {
 
   // ==================== USERS ====================
 
-  /// Get all users stream
+  /// Get all users stream (active only)
   Stream<List<AppUser>> getAllUsers() {
     return _supabase
         .from('users')
         .stream(primaryKey: ['id'])
+        .eq('isactive', true)
         .order('name', ascending: true)
         .map((snapshot) {
           return snapshot.map((data) => AppUser.fromSupabase(data)).toList();

@@ -111,12 +111,14 @@ class AuthService {
     await _supabase.from('users').update({'isactive': false}).eq('id', id);
   }
 
-  /// Get all users
+  /// Get all users (active only)
   Future<List<AppUser>> getAllUsers() async {
     try {
-      final response = await _supabase.from('users').select().order('id',
-          ascending:
-              false); // Use id to avoid missing custom createddate column
+      final response = await _supabase
+          .from('users')
+          .select()
+          .eq('isactive', true)
+          .order('id', ascending: false);
 
       return (response as List).map((data) {
         return AppUser.fromSupabase(data);
