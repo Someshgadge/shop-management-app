@@ -1176,7 +1176,6 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
         category: 'Stock',
         paymentMode: _paymentMode,
         paidAmount: _paidAmount,
-        pendingAmount: _pendingAmount,
         notes: _notesController.text.trim().isEmpty
             ? null
             : _notesController.text.trim(),

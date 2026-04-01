@@ -1,484 +1,420 @@
-# Shop Management Application - Supabase Version
+# 🏪 Shop Management System
 
-A comprehensive Flutter-based shop management system with real-time synchronization across Android and Web platforms, powered by **Supabase**.
+A comprehensive Flutter-based shop management application with real-time synchronization, role-based access control, and complete business analytics.
 
-## Features
+**Live App:** https://shop-management-a20d5.web.app/
 
-### User Roles & Permissions
+---
+
+## 📋 Table of Contents
+
+- [Features](#-features)
+- [User Roles](#-user-roles)
+- [Quick Start](#-quick-start)
+- [Deployment](#-deployment)
+- [Database Schema](#-database-schema)
+- [Recent Updates](#-recent-updates)
+- [Tech Stack](#-tech-stack)
+- [Project Structure](#-project-structure)
+- [Troubleshooting](#-troubleshooting)
+
+---
+
+## ✨ Features
+
+### 📊 Core Business Features
+
+- **Shop Management** - Create, edit, delete shops with manager assignment
+- **Sales Tracking** - Record sales with online/cash breakdown and adhoc expenses
+- **Purchase Management** - Track vendor purchases with payment tracking (paid/pending)
+- **Stock Distribution** - Distribute stock to shops with accept/reject workflow
+- **User Management** - Complete CRUD operations with role-based permissions
+- **Reports & Analytics** - Sales, purchase, distribution, and P&L reports with export
+
+### 🎯 Recent Improvements (2026)
+
+- ✅ **Auto-refresh** - Changes visible immediately without logout/login
+- ✅ **Pending Amount Calculation** - Automatically calculated for purchases
+- ✅ **Search & Filter** - Quick find across all lists
+- ✅ **Export Reports** - PDF/Excel/CSV export functionality
+- ✅ **Audit Logging** - Track all user actions
+- ✅ **Button Visibility** - All button text now visible (white on blue)
+- ✅ **Distribution CRUD** - Edit/delete distributions (Admin only)
+- ✅ **User CRUD** - Complete user management with edit/delete
+
+### 📱 Platform Support
+
+- ✅ **Web** (Primary - Deployed on Firebase)
+- ✅ **Mobile** (Android/iOS - Build locally)
+- ✅ **Desktop** (Windows/Mac/Linux - Build locally)
+
+---
+
+## 👥 User Roles
 
 | Feature | Admin | Manager | Shopkeeper |
 |---------|-------|---------|------------|
-| View Dashboard | ✅ | ✅ | ✅ |
-| Add Sales | ✅ | ✅ | ✅ |
-| Edit Sales | ✅ | ✅ | ❌ |
-| Delete Sales | ✅ | ❌ | ❌ |
-| Add Purchases | ✅ | ✅ | ❌ |
-| Manage Distribution | ✅ | ✅ | View Only |
-| Accept/Reject Stock | ✅ | ✅ | ✅ |
-| Add Shops | ✅ | ✅ | ❌ |
-| Edit Shops | ✅ | ✅ | ❌ |
-| Delete Shops | ✅ | ❌ | ❌ |
-| Manage Users | ✅ | ✅ | ❌ |
-| Delete Users | ✅ | ❌ | ❌ |
+| **Dashboard** | ✅ | ✅ | ✅ |
+| **View Sales** | ✅ | ✅ | ✅ |
+| **Add Sales** | ✅ | ✅ | ✅ |
+| **Edit Sales** | ✅ | ✅ | ❌ |
+| **Delete Sales** | ✅ | ❌ | ❌ |
+| **View Purchases** | ✅ | ✅ | ❌ |
+| **Add Purchases** | ✅ | ✅ | ❌ |
+| **Edit Purchases** | ✅ | ✅ | ❌ |
+| **Delete Purchases** | ✅ | ❌ | ❌ |
+| **View Distribution** | ✅ | ✅ | ✅ |
+| **Add Distribution** | ✅ | ✅ | ❌ |
+| **Edit Distribution** | ✅ | ❌ | ❌ |
+| **Delete Distribution** | ✅ | ❌ | ❌ |
+| **Accept/Reject Stock** | ❌ | ❌ | ✅ |
+| **User Management** | ✅ Full CRUD | ✅ Create Only | ❌ |
+| **Shop Management** | ✅ Full CRUD | ✅ Create/Edit | ❌ |
+| **Reports** | ✅ All | ✅ All | ❌ |
 
-### Core Modules
+---
 
-1. **Sales Entry** - Store name, date, online/cash amounts
-2. **Purchase Entry** - Vendor, amount, bill photo upload
-3. **Shop Distribution** - Stock allocation with accept/reject workflow
-4. **Dashboard** - Date-wise, Month-wise, YTD, Shop-wise reports
-5. **User Management** - Create users with roles (Manager+)
-6. **Shop Management** - Add/edit shops (Admin/Manager)
-7. **Notifications** - Real-time alerts for all actions
+## 🚀 Quick Start
 
-## Tech Stack
-
-- **Frontend**: Flutter 3.x (Dart)
-- **Platforms**: Android, Web
-- **Backend**: Supabase
-  - Auth: Supabase Authentication
-  - Database: PostgreSQL with real-time subscriptions
-  - Storage: Supabase Storage (for photos)
-- **State Management**: Provider
-
-## Setup Instructions
-
-### Step 1: Install Dependencies
+### Prerequisites
 
 ```bash
-cd shop_management_app
+# Install Flutter SDK
+Download from: https://flutter.dev/docs/get-started/install
+
+# Install Firebase CLI
+npm install -g firebase-tools
+
+# Verify installations
+flutter --version
+firebase --version
+```
+
+### Clone & Setup
+
+```bash
+# Navigate to project
+cd "c:\Users\SOMYAL\Desktop\Shop Management\shop_management_app"
+
+# Get dependencies
 flutter pub get
-```
 
-### Step 2: Create Supabase Project
-
-1. Go to https://supabase.com
-2. Click "New Project"
-3. Enter project details:
-   - **Name**: Shop Management
-   - **Database Password**: (save this securely)
-   - **Region**: Choose closest to your users
-4. Click "Create new project"
-
-### Step 3: Get Supabase Credentials
-
-1. In your Supabase project dashboard
-2. Go to **Settings** → **API**
-3. Copy:
-   - **Project URL**
-   - **anon/public key**
-
-### Step 4: Update Flutter App
-
-Open `lib/main.dart` and update:
-
-```dart
-await Supabase.initialize(
-  url: 'YOUR_SUPABASE_URL',
-  anonKey: 'YOUR_SUPABASE_ANON_KEY',
-);
-```
-
-Example:
-```dart
-await Supabase.initialize(
-  url: 'https://abcdefghijklmnop.supabase.co',
-  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-);
-```
-
-### Step 5: Set Up Database Tables
-
-Go to Supabase **SQL Editor** and run these commands:
-
-```sql
--- Enable UUID extension
-create extension if not exists "uuid-ossp";
-
--- Create users table
-create table users (
-  id uuid primary key references auth.users on delete cascade,
-  email text unique not null,
-  name text not null,
-  role text not null check (role in ('admin', 'manager', 'shopkeeper')),
-  shop_id uuid references shops(id),
-  created_by uuid references users(id),
-  created_at timestamptz default now(),
-  is_active boolean default true
-);
-
--- Create shops table
-create table shops (
-  id uuid primary key default uuid_generate_v4(),
-  name text not null,
-  address text,
-  contact_person text,
-  phone text,
-  created_by uuid references users(id),
-  created_at timestamptz default now(),
-  is_active boolean default true
-);
-
--- Create sales table
-create table sales (
-  id uuid primary key default uuid_generate_v4(),
-  store_name text not null,
-  date date not null,
-  online_amount numeric default 0,
-  cash_amount numeric default 0,
-  shop_id uuid references shops(id),
-  created_by uuid references users(id),
-  created_at timestamptz default now(),
-  last_modified_by uuid references users(id),
-  last_modified_at timestamptz
-);
-
--- Create purchases table
-create table purchases (
-  id uuid primary key default uuid_generate_v4(),
-  vendor_name text not null,
-  amount numeric default 0,
-  bill_photo_url text,
-  shop_id uuid references shops(id),
-  created_by uuid references users(id),
-  created_at timestamptz default now(),
-  last_modified_by uuid references users(id),
-  last_modified_at timestamptz
-);
-
--- Create distributions table
-create table distributions (
-  id uuid primary key default uuid_generate_v4(),
-  shop_id uuid references shops(id) not null,
-  date date not null,
-  stock_amount numeric default 0,
-  bilti_photo_url text,
-  created_by uuid references users(id),
-  created_at timestamptz default now(),
-  status text default 'pending' check (status in ('pending', 'accepted', 'rejected')),
-  responded_by uuid references users(id),
-  responded_at timestamptz,
-  rejection_reason text
-);
-
--- Create notifications table
-create table notifications (
-  id uuid primary key default uuid_generate_v4(),
-  title text not null,
-  message text not null,
-  type text not null,
-  recipient_id uuid references users(id),
-  sender_id uuid references users(id),
-  related_doc_id uuid,
-  is_read boolean default false,
-  created_at timestamptz default now()
-);
-
--- Create indexes for better performance
-create index idx_users_shop_id on users(shop_id);
-create index idx_sales_shop_id on sales(shop_id);
-create index idx_sales_date on sales(date);
-create index idx_purchases_shop_id on purchases(shop_id);
-create index idx_distributions_shop_id on distributions(shop_id);
-create index idx_notifications_recipient on notifications(recipient_id);
-create index idx_notifications_is_read on notifications(is_read);
-
--- Enable Row Level Security (RLS)
-alter table users enable row level security;
-alter table shops enable row level security;
-alter table sales enable row level security;
-alter table purchases enable row level security;
-alter table distributions enable row level security;
-alter table notifications enable row level security;
-```
-
-### Step 6: Create Storage Buckets
-
-In Supabase dashboard, go to **Storage** and create these buckets:
-
-1. **bills** - For purchase bill photos
-2. **biltis** - For distribution bilti photos
-
-Make them **public** so images can be viewed.
-
-### Step 7: Set Up RLS Policies
-
-Run these SQL commands in Supabase SQL Editor:
-
-```sql
--- Users policies
-create policy "Users can view all users"
-  on users for select
-  using (true);
-
-create policy "Admins can insert users"
-  on users for insert
-  with check (
-    exists (
-      select 1 from users
-      where id = auth.uid() and role = 'admin'
-    )
-  );
-
-create policy "Admins can update users"
-  on users for update
-  using (
-    exists (
-      select 1 from users
-      where id = auth.uid() and role = 'admin'
-    )
-  );
-
--- Shops policies
-create policy "Authenticated users can view shops"
-  on shops for select
-  using (auth.role() = 'authenticated');
-
-create policy "Admins and managers can insert shops"
-  on shops for insert
-  with check (
-    exists (
-      select 1 from users
-      where id = auth.uid() and role in ('admin', 'manager')
-    )
-  );
-
-create policy "Admins and managers can update shops"
-  on shops for update
-  using (
-    exists (
-      select 1 from users
-      where id = auth.uid() and role in ('admin', 'manager')
-    )
-  );
-
--- Sales policies
-create policy "Authenticated users can view sales"
-  on sales for select
-  using (auth.role() = 'authenticated');
-
-create policy "Authenticated users can insert sales"
-  on sales for insert
-  with check (auth.role() = 'authenticated');
-
-create policy "Admins and managers can update sales"
-  on sales for update
-  using (
-    exists (
-      select 1 from users
-      where id = auth.uid() and role in ('admin', 'manager')
-    )
-  );
-
-create policy "Admins can delete sales"
-  on sales for delete
-  using (
-    exists (
-      select 1 from users
-      where id = auth.uid() and role = 'admin'
-    )
-  );
-
--- Purchases policies
-create policy "Admins and managers can view purchases"
-  on purchases for select
-  using (
-    exists (
-      select 1 from users
-      where id = auth.uid() and role in ('admin', 'manager')
-    )
-  );
-
-create policy "Admins and managers can insert purchases"
-  on purchases for insert
-  with check (
-    exists (
-      select 1 from users
-      where id = auth.uid() and role in ('admin', 'manager')
-    )
-  );
-
-create policy "Admins can update purchases"
-  on purchases for update
-  using (
-    exists (
-      select 1 from users
-      where id = auth.uid() and role = 'admin'
-    )
-  );
-
-create policy "Admins can delete purchases"
-  on purchases for delete
-  using (
-    exists (
-      select 1 from users
-      where id = auth.uid() and role = 'admin'
-    )
-  );
-
--- Distributions policies
-create policy "Authenticated users can view distributions"
-  on distributions for select
-  using (auth.role() = 'authenticated');
-
-create policy "Admins and managers can insert distributions"
-  on distributions for insert
-  with check (
-    exists (
-      select 1 from users
-      where id = auth.uid() and role in ('admin', 'manager')
-    )
-  );
-
-create policy "Shopkeepers can update their distributions"
-  on distributions for update
-  using (
-    exists (
-      select 1 from users u
-      where u.id = auth.uid() 
-      and u.shop_id = distributions.shop_id
-    )
-    or exists (
-      select 1 from users
-      where id = auth.uid() and role in ('admin', 'manager')
-    )
-  );
-
--- Notifications policies
-create policy "Users can view their notifications"
-  on notifications for select
-  using (
-    recipient_id = auth.uid()
-    or exists (
-      select 1 from users where id = auth.uid() and role = 'admin'
-    )
-  );
-
-create policy "Authenticated users can insert notifications"
-  on notifications for insert
-  with check (auth.role() = 'authenticated');
-
-create policy "Users can update their notifications"
-  on notifications for update
-  using (recipient_id = auth.uid());
-```
-
-### Step 8: Create Admin User
-
-1. Go to Supabase **Authentication** → **Users**
-2. Click "Add user" → "Create new user"
-3. Enter:
-   - **Email**: `admin@shop.com`
-   - **Password**: `admin123`
-   - **Auto Confirm User**: ✅ (check this)
-4. Click "Create user"
-
-5. Now go to **SQL Editor** and run:
-
-```sql
--- Insert admin user record
-insert into users (id, email, name, role, created_at, is_active)
-values (
-  'USER_ID_FROM_AUTH', -- Replace with the actual user ID from Authentication
-  'admin@shop.com',
-  'Admin',
-  'admin',
-  now(),
-  true
-);
-```
-
-### Step 9: Run the App
-
-```bash
-# For web
+# Run locally (Chrome)
 flutter run -d chrome
-
-# For Android
-flutter run
 ```
 
-### Step 10: Build for Production
+### Login Credentials
 
-**Android APK:**
+**Default Admin:**
+- Username: `admin`
+- Password: Check with your system administrator
+
+**Shopkeeper:**
+- Username: Provided by admin
+- Password: Provided by admin
+
+---
+
+## 📦 Deployment
+
+### One-Command Deploy
+
 ```bash
-flutter build apk --release
+cd "c:\Users\SOMYAL\Desktop\Shop Management\shop_management_app"
+flutter clean && flutter pub get && flutter build web --release && firebase deploy --only hosting
 ```
 
-**Web:**
+### Step-by-Step Deploy
+
 ```bash
+# 1. Clean build artifacts
+flutter clean
+
+# 2. Get dependencies
+flutter pub get
+
+# 3. Build for web
+flutter build web --release
+
+# 4. Deploy to Firebase
+firebase deploy --only hosting
+
+# 5. Verify deployment
+# Visit: https://shop-management-a20d5.web.app/
+```
+
+### Deployment Time
+
+- **First build:** ~2-3 minutes
+- **Subsequent builds:** ~1-2 minutes
+- **Firebase deploy:** ~30 seconds
+
+---
+
+## 🗄️ Database Schema
+
+### Supabase Tables
+
+```sql
+-- Users Table
+CREATE TABLE users (
+  id uuid PRIMARY KEY,
+  username text UNIQUE NOT NULL,
+  password text NOT NULL,
+  name text NOT NULL,
+  role int NOT NULL, -- 0=Admin, 1=Manager, 2=Shopkeeper
+  shopid uuid REFERENCES shops(id),
+  isactive boolean DEFAULT true
+);
+
+-- Shops Table
+CREATE TABLE shops (
+  id uuid PRIMARY KEY,
+  shopname text NOT NULL,
+  location text,
+  managername text,
+  createddate timestamptz DEFAULT NOW(),
+  isactive boolean DEFAULT true
+);
+
+-- Sales Table
+CREATE TABLE sales (
+  id uuid PRIMARY KEY,
+  storename text NOT NULL,
+  date timestamptz DEFAULT NOW(),
+  onlineamount decimal DEFAULT 0,
+  cashamount decimal DEFAULT 0,
+  adhocexp decimal DEFAULT 0,
+  notes text
+);
+
+-- Purchases Table
+CREATE TABLE purchases (
+  id uuid PRIMARY KEY,
+  vendorname text NOT NULL,
+  amount decimal NOT NULL,
+  billphotopath text,
+  date timestamptz DEFAULT NOW(),
+  category text,
+  notes text,
+  paymentmode text DEFAULT 'Cash',
+  paidamount decimal DEFAULT 0
+  -- pendingAmount is calculated: MAX(0, amount - paidAmount)
+);
+
+-- Distributions Table
+CREATE TABLE distributions (
+  id uuid PRIMARY KEY,
+  shopname text NOT NULL,
+  date timestamptz DEFAULT NOW(),
+  stockamount decimal NOT NULL,
+  biltiphotopath text,
+  producttype text,
+  quantity int,
+  notes text,
+  status text DEFAULT 'PENDING', -- PENDING, ACCEPTED, REJECTED
+  acceptedby uuid REFERENCES users(id),
+  accepteddate timestamptz
+);
+
+-- Audit Logs Table (NEW!)
+CREATE TABLE audit_logs (
+  id uuid PRIMARY KEY,
+  user_id uuid REFERENCES users(id),
+  action text NOT NULL, -- CREATE, UPDATE, DELETE
+  table_name text NOT NULL,
+  record_id uuid,
+  old_value jsonb,
+  new_value jsonb,
+  created_at timestamptz DEFAULT NOW()
+);
+```
+
+### Required Database Migrations
+
+Run this in **Supabase SQL Editor** to add new features:
+
+```sql
+-- 1. Add adhocexp to sales (if not exists)
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS adhocexp decimal DEFAULT 0;
+
+-- 2. Add payment tracking to purchases (if not exists)
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS paymentmode text DEFAULT 'Cash';
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS paidamount decimal DEFAULT 0;
+
+-- 3. Create audit logs table
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES users(id),
+  action text NOT NULL,
+  table_name text NOT NULL,
+  record_id uuid,
+  old_value jsonb,
+  new_value jsonb,
+  created_at timestamptz DEFAULT NOW()
+);
+
+-- 4. Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_sales_storename ON sales(storename);
+CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(date DESC);
+CREATE INDEX IF NOT EXISTS idx_purchases_vendor ON purchases(vendorname);
+CREATE INDEX IF NOT EXISTS idx_distributions_shop ON distributions(shopname);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_table ON audit_logs(table_name);
+```
+
+---
+
+## 🔧 Recent Updates
+
+### Version 2.1.0 (April 2026)
+
+**Added:**
+- ✅ Pending amount auto-calculation for purchases
+- ✅ Edit/Delete for Distribution (Admin only)
+- ✅ Full CRUD for User Management (Admin only)
+- ✅ Auto-refresh after all CRUD operations
+- ✅ Refresh buttons on all management screens
+- ✅ Button text visibility fixes (white on blue)
+- ✅ Confirmation dialogs for destructive actions
+
+**Fixed:**
+- ✅ Pending amount calculation bug
+- ✅ Distribution edit/delete not reflecting
+- ✅ User management refresh issue
+- ✅ Button text invisible on blue background
+
+### Version 2.0.0 (March 2026)
+
+**Added:**
+- ✅ Reports & Analytics module
+- ✅ Export functionality (PDF/Excel/CSV)
+- ✅ Adhoc expenses tracking in sales
+- ✅ Payment mode tracking (Cash/Online)
+- ✅ Partial payment tracking for purchases
+- ✅ Audit logging system
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+- **Flutter** 3.19+ - Cross-platform framework
+- **Provider** - State management
+- **FL Chart** - Charts and graphs
+- **Intl** - Date/number formatting
+
+### Backend
+- **Supabase** - PostgreSQL database
+- **Firebase Hosting** - Web hosting
+- **Supabase Storage** - File uploads (bills, biltis)
+
+### Development
+- **Dart** 3.3+ - Programming language
+- **Firebase CLI** - Deployment
+- **Git** - Version control
+
+---
+
+## 📁 Project Structure
+
+```
+shop_management_app/
+├── lib/
+│   ├── main.dart                    # App entry point
+│   ├── models/                      # Data models
+│   │   ├── app_user.dart           # User model
+│   │   ├── shop.dart               # Shop model
+│   │   ├── sale.dart               # Sale model (with adhocExp)
+│   │   ├── purchase.dart           # Purchase model (auto pending)
+│   │   ├── distribution.dart       # Distribution model
+│   │   └── user_role.dart          # Role enum
+│   ├── services/                    # Backend services
+│   │   ├── auth_service.dart       # Authentication
+│   │   ├── database_service.dart   # CRUD operations
+│   │   └── storage_service.dart    # File uploads
+│   ├── providers/                   # State management
+│   │   ├── auth_provider.dart      # Auth state
+│   │   └── notification_provider.dart
+│   └── screens/                     # UI screens
+│       ├── home_screen.dart         # Main navigation
+│       ├── dashboard_screen.dart    # Analytics
+│       ├── sales/                   # Sales screens
+│       ├── purchase/                # Purchase screens
+│       ├── distribution/            # Distribution screens
+│       ├── shops/                   # Shop screens
+│       ├── users/                   # User screens
+│       └── reports/                 # Reports & analytics
+├── firebase.json                    # Firebase config
+├── pubspec.yaml                     # Dependencies
+└── README.md                        # This file
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Changes Not Reflecting After Update
+
+**Solution:**
+```bash
+# Hard refresh browser
+Ctrl + Shift + R
+
+# Or clear cache
+Ctrl + Shift + Delete → Clear cached images and files
+
+# Or use incognito mode
+Ctrl + Shift + N
+```
+
+### Build Fails
+
+**Solution:**
+```bash
+# Clean and rebuild
+flutter clean
+flutter pub get
+flutter pub cache repair
+
+# Try building again
 flutter build web --release
 ```
 
-## Default Credentials
+### Database Errors
 
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@shop.com | admin123 |
+**Solution:**
+1. Check Supabase dashboard: https://supabase.com/dashboard
+2. Verify all tables exist
+3. Run migration scripts (see Database Schema section)
+4. Check RLS policies are enabled
 
-## Project Structure
+### Login Fails
 
-```
-lib/
-├── main.dart                 # App entry + Supabase init
-├── models/                   # Data models
-│   ├── app_user.dart
-│   ├── shop.dart
-│   ├── sale.dart
-│   ├── purchase.dart
-│   ├── distribution.dart
-│   └── notification.dart
-├── services/                 # Supabase services
-│   ├── auth_service.dart
-│   ├── database_service.dart
-│   ├── storage_service.dart
-│   └── notification_service.dart
-├── providers/                # State management
-│   ├── auth_provider.dart
-│   └── notification_provider.dart
-└── screens/                  # UI screens
-    ├── auth/
-    ├── sales/
-    ├── purchase/
-    ├── distribution/
-    ├── dashboard/
-    ├── users/
-    └── shops/
-```
+**Solution:**
+1. Verify user exists in `users` table
+2. Check `isactive` is `true`
+3. Verify password matches (plain text in DB)
+4. Check Supabase credentials in `lib/main.dart`
 
-## Key Differences from Firebase
+---
 
-| Feature | Firebase | Supabase |
-|---------|----------|----------|
-| Database | Firestore (NoSQL) | PostgreSQL (SQL) |
-| Auth | Firebase Auth | Supabase Auth |
-| Real-time | Built-in | Streams |
-| Storage | Firebase Storage | Supabase Storage |
-| Pricing | Pay-as-you-go | More generous free tier |
-| Self-hosting | No | Yes |
+## 📞 Support
 
-## Troubleshooting
+For issues or questions:
+1. Check this README first
+2. Review `IMPROVEMENTS_STATUS.md` for known issues
+3. Check Supabase dashboard for database errors
+4. Review Firebase console for deployment errors
 
-### "Invalid API key"
-- Check your Supabase URL and anon key in `main.dart`
+---
 
-### "Table does not exist"
-- Run the SQL commands in Supabase SQL Editor
+## 📄 License
 
-### "Permission denied"
-- Check RLS policies are set up correctly
-- Verify user has correct role in users table
+This is a private commercial application. All rights reserved.
 
-### Real-time not working
-- Ensure streams are properly set up
-- Check RLS policies allow read access
+---
 
-## Support
-
-For issues or questions, check:
-- Supabase Docs: https://supabase.com/docs
-- Flutter Docs: https://docs.flutter.dev
-
-## License
-
-Proprietary - All rights reserved
+**Last Updated:** April 2026  
+**Version:** 2.1.0  
+**Status:** Production Ready ✅

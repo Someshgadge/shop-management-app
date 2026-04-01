@@ -9,7 +9,6 @@ class Purchase {
   final String? notes; // Your schema: notes
   final String paymentMode; // 'Cash' or 'Online'
   final double paidAmount; // Amount already paid
-  final double pendingAmount; // Amount remaining to pay
 
   Purchase({
     required this.id,
@@ -21,17 +20,23 @@ class Purchase {
     this.notes,
     this.paymentMode = 'Cash',
     this.paidAmount = 0.0,
-    this.pendingAmount = 0.0,
   });
 
   // For backwards compatibility
   String? get billPhotoUrl => billPhotoPath;
-  bool get isFullyPaid => pendingAmount <= 0;
+
+  // Calculate pending amount automatically
+  double get pendingAmount {
+    final calculated = amount - paidAmount;
+    return calculated > 0 ? calculated : 0.0;
+  }
+
+  bool get isFullyPaid =>
+      pendingAmount < 0.01; // Allow small floating point errors
 
   factory Purchase.fromSupabase(Map<String, dynamic> data) {
     final amount = (data['amount'] ?? 0).toDouble();
     final paidAmount = (data['paidamount'] ?? 0).toDouble();
-    final pendingAmount = (data['pendingamount'] ?? 0).toDouble();
 
     return Purchase(
       id: data['id'] ?? '',
@@ -44,7 +49,6 @@ class Purchase {
       notes: data['notes'],
       paymentMode: data['paymentmode'] ?? 'Cash',
       paidAmount: paidAmount,
-      pendingAmount: pendingAmount > 0 ? pendingAmount : (amount - paidAmount),
     );
   }
 
@@ -59,8 +63,6 @@ class Purchase {
       'notes': notes,
       'paymentmode': paymentMode,
       'paidamount': paidAmount,
-      'pendingamount':
-          pendingAmount > 0 ? pendingAmount : (amount - paidAmount),
     };
   }
 
@@ -74,7 +76,6 @@ class Purchase {
     String? notes,
     String? paymentMode,
     double? paidAmount,
-    double? pendingAmount,
   }) {
     return Purchase(
       id: id ?? this.id,
@@ -86,7 +87,6 @@ class Purchase {
       notes: notes ?? this.notes,
       paymentMode: paymentMode ?? this.paymentMode,
       paidAmount: paidAmount ?? this.paidAmount,
-      pendingAmount: pendingAmount ?? this.pendingAmount,
     );
   }
 }

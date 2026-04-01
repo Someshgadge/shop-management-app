@@ -2,10 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
+import '../../services/database_service.dart';
 import '../../models/models.dart';
 
-class UserManagementScreen extends StatelessWidget {
+class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
+
+  @override
+  State<UserManagementScreen> createState() => _UserManagementScreenState();
+}
+
+class _UserManagementScreenState extends State<UserManagementScreen> {
+  void _refreshData() {
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +33,13 @@ class UserManagementScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('User Management'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshData,
+            tooltip: 'Refresh',
+          ),
+        ],
       ),
       body: FutureBuilder<List<AppUser>>(
         future: AuthService().getAllUsers(),
@@ -85,6 +102,41 @@ class UserManagementScreen extends StatelessWidget {
                     ],
                   ),
                   isThreeLine: true,
+                  trailing: authProvider.isAdmin
+                      ? PopupMenuButton<String>(
+                          onSelected: (value) {
+                            if (value == 'edit') {
+                              _showEditUserDialog(context, user);
+                            } else if (value == 'delete') {
+                              _showDeleteConfirmation(context, user);
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.edit, size: 20),
+                                  SizedBox(width: 8),
+                                  Text('Edit'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.delete,
+                                      size: 20, color: Colors.red),
+                                  SizedBox(width: 8),
+                                  Text('Delete',
+                                      style: TextStyle(color: Colors.red)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      : null,
                 ),
               );
             },
@@ -114,12 +166,252 @@ class UserManagementScreen extends StatelessWidget {
   void _showAddUserDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AddUserDialog(),
+      builder: (context) => AddUserDialog(onUserAdded: _refreshData),
+    );
+  }
+
+  void _showEditUserDialog(BuildContext context, AppUser user) {
+    final usernameController = TextEditingController(text: user.username);
+    final nameController = TextEditingController(text: user.name);
+    final passwordController = TextEditingController();
+    UserRole selectedRole = user.role;
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Edit User'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: usernameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Username',
+                    prefixIcon: Icon(Icons.account_circle),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Required';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Name',
+                    prefixIcon: Icon(Icons.badge),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Required';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'New Password (leave empty to keep current)',
+                    prefixIcon: Icon(Icons.lock),
+                    helperText: 'Min 3 characters',
+                  ),
+                  validator: (value) {
+                    if (value != null && value.isNotEmpty && value.length < 3) {
+                      return 'Min 3 characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<UserRole>(
+                  decoration: const InputDecoration(
+                    labelText: 'Role',
+                    prefixIcon: Icon(Icons.badge),
+                  ),
+                  value: selectedRole,
+                  items: UserRole.values.map((role) {
+                    return DropdownMenuItem(
+                      value: role,
+                      child: Text(role.displayName),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => selectedRole = value);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      if (usernameController.text.isEmpty ||
+                          nameController.text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Please fill all required fields')),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => isLoading = true);
+
+                      try {
+                        final updateData = <String, dynamic>{
+                          'username': usernameController.text.trim(),
+                          'name': nameController.text.trim(),
+                          'role': selectedRole.value,
+                        };
+
+                        if (passwordController.text.isNotEmpty) {
+                          updateData['password'] =
+                              passwordController.text.trim();
+                        }
+
+                        await DatabaseService().updateUser(user.id, updateData);
+
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          _refreshData();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('User updated successfully'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      } finally {
+                        if (context.mounted) {
+                          setDialogState(() => isLoading = false);
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF667EEA),
+                foregroundColor: Colors.white,
+              ),
+              child: isLoading
+                  ? const CircularProgressIndicator()
+                  : const Text('Update'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, AppUser user) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete User'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete "${user.name}"?',
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.warning, color: Colors.red, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Username: ${user.username}',
+                        style: const TextStyle(fontSize: 14, color: Colors.red),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.badge, color: Colors.red, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Role: ${user.role.displayName}',
+                        style: const TextStyle(fontSize: 14, color: Colors.red),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'This will deactivate the user account. The user will not be able to login.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await DatabaseService().deleteUser(user.id);
+              if (context.mounted) {
+                Navigator.pop(context);
+                _refreshData();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('User deleted successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class AddUserDialog extends StatefulWidget {
+  final VoidCallback? onUserAdded;
+
+  const AddUserDialog({super.key, this.onUserAdded});
   @override
   State<AddUserDialog> createState() => _AddUserDialogState();
 }
@@ -157,6 +449,7 @@ class _AddUserDialogState extends State<AddUserDialog> {
 
       if (mounted) {
         Navigator.pop(context);
+        widget.onUserAdded?.call();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('User created successfully')),
         );
@@ -254,6 +547,10 @@ class _AddUserDialogState extends State<AddUserDialog> {
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : _submitUser,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF667EEA),
+            foregroundColor: Colors.white,
+          ),
           child: _isLoading
               ? const CircularProgressIndicator()
               : const Text('Add User'),

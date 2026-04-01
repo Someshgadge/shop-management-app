@@ -314,12 +314,17 @@ class _DistributionScreenState extends State<DistributionScreen> {
 
               if (context.mounted) {
                 Navigator.pop(context);
+                setState(() {}); // Refresh the list
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                       content: Text('Distribution added successfully')),
                 );
               }
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF667EEA),
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Add'),
           ),
         ],
@@ -409,6 +414,10 @@ class _DistributionScreenState extends State<DistributionScreen> {
                 );
               }
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF667EEA),
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Update'),
           ),
         ],
