@@ -94,8 +94,8 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
     return total;
   }
 
-  double get _netTotal {
-    return _onlineAmount + _cashAmount - _adhocExpTotal;
+  double get _cashDeposited {
+    return _cashAmount - _adhocExpTotal;
   }
 
   List<Map<String, dynamic>> get _adhocExpItems {
@@ -398,16 +398,16 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
               ],
               const SizedBox(height: 16),
 
-              // Amount Deposited (NET TOTAL) - Read-only field
+              // Cash deposited (NET TOTAL) - Read-only field
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: _netTotal >= 0
+                  color: _cashDeposited >= 0
                       ? Colors.green.withOpacity(0.1)
                       : Colors.red.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _netTotal >= 0 ? Colors.green : Colors.red,
+                    color: _cashDeposited >= 0 ? Colors.green : Colors.red,
                     width: 2,
                   ),
                 ),
@@ -418,12 +418,13 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                       children: [
                         Icon(
                           Icons.account_balance_wallet,
-                          color: _netTotal >= 0 ? Colors.green : Colors.red,
+                          color:
+                              _cashDeposited >= 0 ? Colors.green : Colors.red,
                           size: 24,
                         ),
                         const SizedBox(width: 12),
                         const Text(
-                          'Amount Deposited',
+                          'Cash deposited',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -433,11 +434,11 @@ class _AddSaleScreenState extends State<AddSaleScreen> {
                       ],
                     ),
                     Text(
-                      '₹${_netTotal.toStringAsFixed(2)}',
+                      '₹${_cashDeposited.toStringAsFixed(2)}',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: _netTotal >= 0
+                        color: _cashDeposited >= 0
                             ? Colors.green[700]
                             : Colors.red[700],
                       ),

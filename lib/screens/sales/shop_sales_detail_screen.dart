@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../services/database_service.dart';
@@ -30,13 +31,24 @@ class _ShopSalesDetailScreenState extends State<ShopSalesDetailScreen> {
   double _netTotal = 0;
   bool _isLoading = false;
 
+  StreamSubscription<List<Sale>>? _salesSubscription;
+
   @override
   void initState() {
     super.initState();
     _loadSales();
   }
 
-  void _loadSales() async {
+  @override
+  void dispose() {
+    _salesSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _loadSales() {
+    // Cancel previous subscription if exists
+    _salesSubscription?.cancel();
+
     setState(() => _isLoading = true);
 
     DateTime start, end;
@@ -69,14 +81,33 @@ class _ShopSalesDetailScreenState extends State<ShopSalesDetailScreen> {
       // Get the shop name and normalize it
       final shopName = widget.shop.shopName.trim().toLowerCase();
 
-      // Get all sales in date range
+      // Get all sales in date range and listen to real-time updates
       final salesStream = _databaseService.getAllSalesInDateRange(start, end);
 
-      await salesStream.first.then((allSales) {
+      _salesSubscription = salesStream.listen((allSales) {
+        // Debug logging
+        debugPrint('=== Shop Sales Detail Debug ===');
+        debugPrint('Looking for shop: "${widget.shop.shopName}"');
+        debugPrint('Normalized shop name: "$shopName"');
+        debugPrint('Total sales in date range: ${allSales.length}');
+
+        // Print all unique shop names in the results
+        final uniqueShopNames = allSales.map((s) => s.storeName).toSet();
+        debugPrint('Unique shop names in database: $uniqueShopNames');
+
         // Filter sales for THIS shop only (case-insensitive)
         final filteredSales = allSales.where((sale) {
-          return sale.storeName.trim().toLowerCase() == shopName;
+          final saleShopNormalized = sale.storeName.trim().toLowerCase();
+          final matches = saleShopNormalized == shopName;
+          if (!matches) {
+            debugPrint(
+                '  MISMATCH: "${sale.storeName}" (normalized: "$saleShopNormalized") != "$shopName"');
+          }
+          return matches;
         }).toList();
+
+        debugPrint('Filtered sales count: ${filteredSales.length}');
+        debugPrint('===============================');
 
         setState(() {
           _sales = filteredSales;
@@ -89,6 +120,7 @@ class _ShopSalesDetailScreenState extends State<ShopSalesDetailScreen> {
           _totalAdhocExp =
               filteredSales.fold(0, (sum, sale) => sum + sale.adhocExp);
           _netTotal = filteredSales.fold(0, (sum, sale) => sum + sale.netTotal);
+          _isLoading = false;
         });
       });
     } catch (e) {
@@ -100,9 +132,8 @@ class _ShopSalesDetailScreenState extends State<ShopSalesDetailScreen> {
         _totalCash = 0;
         _totalAdhocExp = 0;
         _netTotal = 0;
+        _isLoading = false;
       });
-    } finally {
-      setState(() => _isLoading = false);
     }
   }
 

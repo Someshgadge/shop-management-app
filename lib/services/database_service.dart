@@ -90,15 +90,22 @@ class DatabaseService {
   }
 
   /// Get all sales in date range (stream version for filtering)
+  /// Note: Supabase streams only allow one filter, so we use .gte() and filter end date client-side
   Stream<List<Sale>> getAllSalesInDateRange(DateTime start, DateTime end) {
     return _supabase
         .from('sales')
         .stream(primaryKey: ['id'])
         .gte('date', start.toIso8601String())
-        .lte('date', end.toIso8601String())
         .order('date', ascending: false)
         .map((snapshot) {
-          return snapshot.map((data) => Sale.fromSupabase(data)).toList();
+          // Filter end date client-side since streams only allow one filter
+          return snapshot
+              .where((data) {
+                final saleDate = DateTime.parse(data['date']);
+                return saleDate.isBefore(end) || saleDate.isAtSameMomentAs(end);
+              })
+              .map((data) => Sale.fromSupabase(data))
+              .toList();
         });
   }
 

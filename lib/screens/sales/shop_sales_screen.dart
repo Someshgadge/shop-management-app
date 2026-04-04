@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/database_service.dart';
 import '../../models/models.dart';
 import 'shop_sales_detail_screen.dart';
+import 'add_sale_screen.dart';
 
 class ShopSalesScreen extends StatefulWidget {
   const ShopSalesScreen({super.key});
@@ -360,6 +361,20 @@ class _ShopSalesScreenState extends State<ShopSalesScreen> {
             ),
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddSaleScreen()),
+          );
+          // Refresh sales summary when returning from add sale screen
+          _loadDailySalesSummary();
+        },
+        backgroundColor: const Color(0xFF667EEA),
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('Add Sale'),
       ),
     );
   }

@@ -256,88 +256,215 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
   void _showAddShopDialog(BuildContext context) {
     final shopNameController = TextEditingController();
     final locationController = TextEditingController();
-    final managerController = TextEditingController();
+    String? selectedManagerId;
+    String? selectedShopkeeperId;
+    List<AppUser> availableUsers = [];
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Shop'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: shopNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Shop Name *',
-                  prefixIcon: Icon(Icons.store),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: locationController,
-                decoration: const InputDecoration(
-                  labelText: 'Location',
-                  prefixIcon: Icon(Icons.location_on),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: managerController,
-                decoration: const InputDecoration(
-                  labelText: 'Manager Name',
-                  prefixIcon: Icon(Icons.person),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (shopNameController.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter shop name')),
-                );
-                return;
-              }
-
-              final shop = Shop(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                shopName: shopNameController.text.trim(),
-                location: locationController.text.trim().isEmpty
-                    ? null
-                    : locationController.text.trim(),
-                managerName: managerController.text.trim().isEmpty
-                    ? null
-                    : managerController.text.trim(),
-                createdDate: DateTime.now(),
-              );
-
-              await _databaseService.createShop(shop);
-
-              if (context.mounted) {
-                Navigator.pop(context);
-                _refreshData();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Shop added successfully'),
-                    backgroundColor: Colors.green,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add Shop'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: shopNameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Shop Name *',
+                    prefixIcon: Icon(Icons.store),
                   ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF667EEA),
-              foregroundColor: Colors.white,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: locationController,
+                  decoration: const InputDecoration(
+                    labelText: 'Location',
+                    prefixIcon: Icon(Icons.location_on),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Dropdown to assign Manager
+                StreamBuilder<List<AppUser>>(
+                  stream: _usersStream,
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const CircularProgressIndicator();
+                    }
+                    availableUsers = snapshot.data!;
+                    final managers = availableUsers
+                        .where((u) => u.role == UserRole.manager)
+                        .toList();
+
+                    return DropdownButtonFormField<String>(
+                      value: selectedManagerId,
+                      decoration: const InputDecoration(
+                        labelText: 'Assign Manager',
+                        prefixIcon: Icon(Icons.supervisor_account),
+                        helperText: 'Optional - Manager can track this shop',
+                      ),
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('None (Unassigned)'),
+                        ),
+                        ...managers.map((user) {
+                          return DropdownMenuItem<String>(
+                            value: user.id,
+                            child: Text(user.name),
+                          );
+                        }).toList(),
+                      ],
+                      onChanged: (value) {
+                        setDialogState(() {
+                          selectedManagerId = value;
+                        });
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Dropdown to assign Shopkeeper
+                StreamBuilder<List<AppUser>>(
+                  stream: _usersStream,
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const SizedBox.shrink();
+                    }
+                    final shopkeepers = availableUsers
+                        .where((u) => u.role == UserRole.shopkeeper)
+                        .toList();
+
+                    return DropdownButtonFormField<String>(
+                      value: selectedShopkeeperId,
+                      decoration: const InputDecoration(
+                        labelText: 'Assign Shopkeeper',
+                        prefixIcon: Icon(Icons.person),
+                        helperText: 'Optional - Shopkeeper works at this shop',
+                      ),
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('None (Unassigned)'),
+                        ),
+                        ...shopkeepers.map((user) {
+                          return DropdownMenuItem<String>(
+                            value: user.id,
+                            child: Text(user.name),
+                          );
+                        }).toList(),
+                      ],
+                      onChanged: (value) {
+                        setDialogState(() {
+                          selectedShopkeeperId = value;
+                        });
+                      },
+                    );
+                  },
+                ),
+              ],
             ),
-            child: const Text('Add Shop'),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (shopNameController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter shop name')),
+                  );
+                  return;
+                }
+
+                // Get assigned user names
+                String? managerName;
+                String? shopkeeperName;
+
+                if (selectedManagerId != null &&
+                    selectedManagerId!.isNotEmpty) {
+                  final manager = availableUsers.firstWhere(
+                    (u) => u.id == selectedManagerId,
+                    orElse: () => AppUser(
+                      id: '',
+                      username: '',
+                      password: '',
+                      name: '',
+                      role: UserRole.manager,
+                      shopId: null,
+                      isActive: true,
+                    ),
+                  );
+                  managerName = manager.name;
+                }
+
+                if (selectedShopkeeperId != null &&
+                    selectedShopkeeperId!.isNotEmpty) {
+                  final shopkeeper = availableUsers.firstWhere(
+                    (u) => u.id == selectedShopkeeperId,
+                    orElse: () => AppUser(
+                      id: '',
+                      username: '',
+                      password: '',
+                      name: '',
+                      role: UserRole.shopkeeper,
+                      shopId: null,
+                      isActive: true,
+                    ),
+                  );
+                  shopkeeperName = shopkeeper.name;
+                }
+
+                final shop = Shop(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                  shopName: shopNameController.text.trim(),
+                  location: locationController.text.trim().isEmpty
+                      ? null
+                      : locationController.text.trim(),
+                  managerName: managerName ?? shopkeeperName,
+                  createdDate: DateTime.now(),
+                );
+
+                await _databaseService.createShop(shop);
+
+                // Update manager's shopId if assigned
+                if (selectedManagerId != null &&
+                    selectedManagerId!.isNotEmpty) {
+                  await _databaseService.updateUser(selectedManagerId!, {
+                    'shopid': shop.id,
+                  });
+                }
+
+                // Update shopkeeper's shopId if assigned
+                if (selectedShopkeeperId != null &&
+                    selectedShopkeeperId!.isNotEmpty) {
+                  await _databaseService.updateUser(selectedShopkeeperId!, {
+                    'shopid': shop.id,
+                  });
+                }
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  _refreshData();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Shop added successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF667EEA),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Add Shop'),
+            ),
+          ],
+        ),
       ),
     );
   }
